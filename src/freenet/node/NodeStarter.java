@@ -16,6 +16,8 @@ import freenet.config.FreenetFilePersistentConfig;
 import freenet.config.InvalidConfigValueException;
 import freenet.config.PersistentConfig;
 import freenet.config.SubConfig;
+import freenet.crypt.BCModifiedSSL;
+import freenet.crypt.DiffieHellman;
 import freenet.crypt.JceLoader;
 import freenet.crypt.RandomSource;
 import freenet.crypt.SSL;
@@ -188,11 +190,14 @@ public class NodeStarter implements WrapperListener {
 
 		// Initialize SSL
 		SubConfig sslConfig = cfg.createSubConfig("ssl");
-		SSL.init(sslConfig);
-
+		//SSL.init(sslConfig);
+                SubConfig bcsslConfig = new SubConfig("bcssl", cfg);
+                BCModifiedSSL.init(bcsslConfig);
+                System.out.println("Starting up SSL");
 		try {
 			node = new Node(cfg, null, null, logConfigHandler, this, executor);
 			node.start(false);
+                        if (BCModifiedSSL.available()) System.out.println("SSL started");
 			System.out.println("Node initialization completed.");
 		} catch(NodeInitException e) {
 			System.err.println("Failed to load node: " + e.exitCode + " : " + e.getMessage());

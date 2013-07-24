@@ -56,6 +56,7 @@ import freenet.crypt.MasterSecret;
 import freenet.crypt.PersistentRandomSource;
 import freenet.crypt.RandomSource;
 import freenet.crypt.Yarrow;
+import freenet.darknetapp.DarknetAppServer;
 import freenet.io.comm.DMT;
 import freenet.io.comm.DisconnectedException;
 import freenet.io.comm.FreenetInetAddress;
@@ -715,7 +716,7 @@ public class Node implements TimeSkewDetectorCallback {
 	public final long startupTime;
 
 	private SimpleToadletServer toadlets;
-
+        private DarknetAppServer darknetAppServer;
 	public final NodeClientCore clientCore;
 
 	// ULPRs, RecentlyFailed, per node failure tables, are all managed by FailureTable.
@@ -1008,7 +1009,12 @@ public class Node implements TimeSkewDetectorCallback {
 
 		// FProxy config needs to be here too
 		SubConfig fproxyConfig = config.createSubConfig("fproxy");
-		try {
+                SubConfig darknetAppConfig = new SubConfig("darknetApp0",config);
+                //To Start DarknetAppServer
+                darknetAppServer = new DarknetAppServer(darknetAppConfig, this, executor);
+                darknetAppConfig.finishedInitialization();
+                darknetAppServer.start();
+                try {
 			toadlets = new SimpleToadletServer(fproxyConfig, new ArrayBucketFactory(), executor, this);
 			fproxyConfig.finishedInitialization();
 			toadlets.start();
@@ -1022,7 +1028,6 @@ public class Node implements TimeSkewDetectorCallback {
 			e4.printStackTrace();
 			throw new NodeInitException(NodeInitException.EXIT_COULD_NOT_START_FPROXY, "Could not start FProxy: "+e4);
 		}
-		
 		final NativeThread entropyGatheringThread = new NativeThread(new Runnable() {
 			
 			long tLastAdded = -1;
@@ -2529,12 +2534,14 @@ public class Node implements TimeSkewDetectorCallback {
 		// FIXME this is a hack
 		// toadlet server should start after all initialized
 		// see NodeClientCore line 437
+                if (darknetAppServer.isEnabled()) {
+                    darknetAppServer.finishStart();
+                }
 		if (toadlets.isEnabled()) {
 			toadlets.finishStart();
 			toadlets.createFproxy();
 			toadlets.removeStartupToadlet();
 		}
-
 		Logger.normal(this, "Node constructor completed");
 		System.out.println("Node constructor completed");
 	}

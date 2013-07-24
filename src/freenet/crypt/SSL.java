@@ -44,6 +44,8 @@ import freenet.support.api.BooleanCallback;
 import freenet.support.api.StringCallback;
 import freenet.support.io.Closer;
 import java.net.ServerSocket;
+import java.security.cert.CertificateEncodingException;
+import java.util.logging.Level;
 
 public class SSL {
 
@@ -64,6 +66,7 @@ public class SSL {
 	private static String keyStore;
 	private static String keyStorePass;
 	private static String keyPass;
+        private static String CERTIFICATE_CHAIN_ALIAS = "freenet";
 
 	/**
 	 * Call this function before ask ServerSocket
@@ -248,7 +251,7 @@ public class SSL {
 					chain[0] = (Certificate) certAndKeyGenGetSelfCertificate.invoke(keypair, x500Name,
 						CERTIFICATE_LIFETIME);
 
-					keystore.setKeyEntry("freenet", privKey, keyPass.toCharArray(), chain);
+					keystore.setKeyEntry(CERTIFICATE_CHAIN_ALIAS, privKey, keyPass.toCharArray(), chain);
 					storeKeyStore();
 					createSSLContext();
 				} catch (ClassNotFoundException cnfe) {
