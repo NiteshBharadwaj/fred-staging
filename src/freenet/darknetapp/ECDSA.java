@@ -1,6 +1,6 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+/**
+ * Elliptical Curve DSA implementation from BouncyCastle
+ * TODO: Store in node.crypt instead of using properties file
  */
 package freenet.darknetapp;
 

@@ -27,6 +27,7 @@ import javax.net.ssl.SSLServerSocket;
 /**
  * An SSL extension to the {@link NetworkInterface} 
  * @author ET
+ * (Modified to support BCSSL)
  */
 public class BCSSLNetworkInterface extends NetworkInterface {
 	

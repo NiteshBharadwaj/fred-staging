@@ -1,6 +1,9 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+/**
+ * SSL.java modified to use Bouncy Castle's implementation
+ * Supports all functions of SSL.java including 
+ *  BCSSL.init() which stores/loads public key from node.crypt 
+ *  BCSSL.available() which says whether it is initialized
+ *  BCSSL.getSelfSignedCertificatePin() which returns the SHA1 hash of SPKI of the certificate. (also called pin)
  */
 package freenet.crypt;
 
