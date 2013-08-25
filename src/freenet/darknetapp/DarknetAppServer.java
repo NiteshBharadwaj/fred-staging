@@ -158,13 +158,7 @@ public class DarknetAppServer implements Runnable {
     private void maybeGetNetworkInterface(boolean ssl) throws IOException {
         if (this.networkInterface!=null) return;
         if(ssl) {
-            while(!BCModifiedSSL.available()) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    java.util.logging.Logger.getLogger(DarknetAppServer.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
+            if (!BCModifiedSSL.available()) throw new IOException();
             System.out.println("now");
             System.out.println(BCModifiedSSL.getSelfSignedCertificatePin());
             this.networkInterface = BCSSLNetworkInterface.create(port, this.bindTo, allowedHosts, executor, false);

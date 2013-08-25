@@ -189,7 +189,7 @@ public class BCModifiedSSL {
                 KeyPair keyPair = keyPairGenerator.generateKeyPair();
                 X509V3CertificateGenerator certGen;
                 certGen = new X509V3CertificateGenerator();
-                X500Principal name = new X500Principal("Freenet");
+                X500Principal name = new X500Principal("CN=Freenet");
                 certGen.setSerialNumber(BigInteger.valueOf(System.currentTimeMillis()));
                 certGen.setSubjectDN(name);
                 certGen.setIssuerDN(name); // use the same
@@ -200,7 +200,7 @@ public class BCModifiedSSL {
                 PrivateKey privKey = keyPair.getPrivate();             
                 X509Certificate cert = certGen.generate(privKey, "BC");
                 Certificate[] chain = new Certificate[1];
-                chain[0] = certGen.generate(privKey, "BC");
+                chain[0] = cert;
                 keystore.setKeyEntry(CERTIFICATE_CHAIN_ALIAS, privKey, keyPass.toCharArray(), chain);
                 storeKeyStore();
                 createSSLContext();
