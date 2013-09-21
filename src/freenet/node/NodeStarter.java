@@ -187,8 +187,7 @@ public class NodeStarter implements WrapperListener {
 		// Initialize SSL
 		SubConfig sslConfig = new SubConfig("ssl", cfg);
 		SSL.init(sslConfig);
-		SubConfig bcsslConfig = new SubConfig("bcssl", cfg);
-		BCModifiedSSL.init(bcsslConfig);
+
 		try {
 			node = new Node(cfg, null, null, logConfigHandler, this, executor);
 			node.start(false);
