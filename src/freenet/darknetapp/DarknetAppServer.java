@@ -7,29 +7,21 @@ import freenet.config.InvalidConfigValueException;
 import freenet.config.NodeNeedRestartException;
 import freenet.config.SubConfig;
 import freenet.crypt.BCModifiedSSL;
-import freenet.crypt.SSL;
 import freenet.io.BCSSLNetworkInterface;
 import freenet.io.NetworkInterface;
-import freenet.io.SSLNetworkInterface;
 import freenet.l10n.NodeL10n;
-import freenet.node.FSParseException;
 import freenet.node.Node;
-import freenet.node.NodeClientCore;
 import freenet.node.PrioRunnable;
 import freenet.support.Executor;
 import freenet.support.LogThresholdCallback;
 import freenet.support.Logger;
 import freenet.support.Logger.LogLevel;
 import freenet.support.OOMHandler;
-import freenet.support.SimpleFieldSet;
 import freenet.support.api.BooleanCallback;
 import freenet.support.api.IntCallback;
 import freenet.support.api.StringCallback;
 import freenet.support.io.NativeThread;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
@@ -52,7 +44,6 @@ public class DarknetAppServer implements Runnable {
     private Thread myThread;
     private final Executor executor;
     private Node node;
-    private NodeClientCore core;
     private NetworkInterface networkInterface;
     private int maxDarknetAppConnections =10;	
     private int darknetAppConnections;
@@ -77,11 +68,13 @@ public class DarknetAppServer implements Runnable {
     }
     
     public void start() {
+        if (!enabled) return;
         if(myThread != null) {
             try {
                 maybeGetNetworkInterface(true);
             } catch (IOException ex) {
                 java.util.logging.Logger.getLogger(DarknetAppServer.class.getName()).log(Level.SEVERE, null, ex);
+                return;
             }
                 myThread.start();
                 Logger.normal(this, "Starting DarknetAppServer on "+bindTo+ ':' +port);
@@ -92,7 +85,6 @@ public class DarknetAppServer implements Runnable {
     public DarknetAppServer(SubConfig darknetAppConfig, Node node, Executor executor) {
         this.executor = executor;
         this.node = node;
-        this.core = node.clientCore;
         int configItemOrder = 0;
    
         //  allowedHosts - "*" to allow all, bindTo - "0.0.0.0" to accept on all interfaces
@@ -116,10 +108,16 @@ public class DarknetAppServer implements Runnable {
             maybeGetNetworkInterface(true);
         } catch (IOException ex) {
             java.util.logging.Logger.getLogger(DarknetAppServer.class.getName()).log(Level.SEVERE, null, ex);
+            return;
         }
         configureFile();
-        myThread = new Thread(this, "DarknetAppServer");
-        myThread.setDaemon(true);
+        if (!enabled) {
+            myThread=null;
+        }
+        else {
+            myThread = new Thread(this, "DarknetAppServer");
+            myThread.setDaemon(true);
+        }
     }
     
     //Create File to save Temporary Noderefernces
@@ -136,22 +134,16 @@ public class DarknetAppServer implements Runnable {
     }
     public static void changeNewDarknetPeersCount(int count,Node node) {
         try {
-            SubConfig darknetAppConfig = node.config.get("darknetApp0");
+            SubConfig darknetAppConfig = node.config.get("darknetApp");
             darknetAppConfig.set("newDarknetPeersCount", String.valueOf(count));
             node.config.store();
             newDarknetPeersCount = count;
-            System.out.println(String.valueOf(darknetAppConfig.getInt("newDarknetPeersCount"))+"This is the one");
+            Logger.normal(DarknetAppServer.class,"Unsynchronized Peers Count" +darknetAppConfig.getInt("newDarknetPeersCount"));
         } catch (InvalidConfigValueException ex) {
             java.util.logging.Logger.getLogger(DarknetAppServer.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NodeNeedRestartException ex) {
             java.util.logging.Logger.getLogger(DarknetAppServer.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
-    //Debugging purposes
-    private void change(SubConfig subconfig) throws InvalidConfigValueException, NodeNeedRestartException {
-        //subconfig.set("bindTo", "0.0.0.0");
-        //subconfig.set("port",7873+"");
-        //subconfig.set("allowedHosts","*");
     }
     
     //Modified from SimpleToadletServer to use BCSSLNetworkInterface instead of SSLNetworkInterface
@@ -159,8 +151,8 @@ public class DarknetAppServer implements Runnable {
         if (this.networkInterface!=null) return;
         if(ssl) {
             if (!BCModifiedSSL.available()) throw new IOException();
-            System.out.println("now");
-            System.out.println(BCModifiedSSL.getSelfSignedCertificatePin());
+            Logger.normal(this,"Certificate Pin-->>" + BCModifiedSSL.getSelfSignedCertificatePin());
+            System.out.println("Certificate Pin-->>" + BCModifiedSSL.getSelfSignedCertificatePin());
             this.networkInterface = BCSSLNetworkInterface.create(port, this.bindTo, allowedHosts, executor, false);
         } else {
             this.networkInterface = NetworkInterface.create(port, this.bindTo, allowedHosts, executor, true);
@@ -173,9 +165,13 @@ public class DarknetAppServer implements Runnable {
             //TODO: Change this 
             this.noderef = node.exportDarknetPublicFieldSet().toString();
             finishedStartup = true;
-	}
+        }
     }
-
+    /**
+     * This is necessary to be in the config for advanced users.
+     * In case of an attack where our homeNode is bombarded with new references, the user can shift this to 0 and/or disable this server (using other config option)
+     * Unnecessary changing of this value might cause instability in this app and/or losing temporary peer node references
+     */
     private class newDarknetPeersCallback extends IntCallback {
         @Override
         public Integer get() {
@@ -190,6 +186,7 @@ public class DarknetAppServer implements Runnable {
         }
     }
     
+    // Copied from SimpleToadletServer
     private class darknetAppBindtoCallback extends StringCallback  {
             @Override
             public String get() {
@@ -213,6 +210,8 @@ public class DarknetAppServer implements Runnable {
                     }
             }
     }
+    
+    // Copied from SimpleToadletServer
     private class darknetAppAllowedHostsCallback extends StringCallback  {
             @Override
             public String get() {
@@ -240,7 +239,22 @@ public class DarknetAppServer implements Runnable {
         @Override
         public void set(Integer newPort) throws NodeNeedRestartException {
                 if(port != newPort) {
-                        throw new NodeNeedRestartException("Port cannot change on the fly");
+                      port = newPort;
+                      try {
+                          maybeGetNetworkInterface(true);
+                      }
+                      catch (IOException e) {
+                          Logger.error(this,"Error while changing port",e);
+                      }
+                      if (enabled) {
+                          synchronized(DarknetAppServer.class) {
+                               myThread.interrupt();
+                               myThread = new Thread(DarknetAppServer.this, "DarknetAppServer");
+                               myThread.setDaemon(true);
+                               myThread.start();
+                               Logger.normal(this,"Restarting DarknetAppServer on "+bindTo+ ':' +port);
+                          }
+                      }
                 }
         }
     }
@@ -258,11 +272,14 @@ public class DarknetAppServer implements Runnable {
                 synchronized(DarknetAppServer.class) {
                         if(val) {
                                 // Start it
+                                enabled = true;
+                                System.out.println("Starting DarknetAppServer on "+bindTo+ ':' +port);
                                 myThread = new Thread(DarknetAppServer.this, "DarknetAppServer");
                         } else {
+                                enabled = false;
                                 myThread.interrupt();
                                 myThread = null;
-                                DarknetAppServer.this.notifyAll();
+                                System.out.println("Closing DarknetAppServer on "+bindTo+ ':' +port);
                                 return;
                         }
                 }
@@ -277,6 +294,11 @@ public class DarknetAppServer implements Runnable {
     
     @Override
     public void run() {
+    	if (networkInterface==null) {
+    		Logger.error(this, "Could not start DarknetAppServer");
+                System.err.println("Could not start DarknetAppServer");
+    		return;
+    	}
         try {
             networkInterface.setSoTimeout(500);
 	} catch (SocketException e1) {
@@ -285,7 +307,7 @@ public class DarknetAppServer implements Runnable {
     boolean finishedStartup = false;
     while(true) {
         synchronized(DarknetAppServer.class) {
-                while(darknetAppConnections > 100) {
+                while(darknetAppConnections > maxDarknetAppConnections) {
                         try {
                             wait();
                         } catch (InterruptedException e) {

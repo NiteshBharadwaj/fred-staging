@@ -1009,7 +1009,7 @@ public class Node implements TimeSkewDetectorCallback {
 
 		// FProxy config needs to be here too
 		SubConfig fproxyConfig = config.createSubConfig("fproxy");
-                SubConfig darknetAppConfig = new SubConfig("darknetApp0",config);
+                SubConfig darknetAppConfig = new SubConfig("darknetApp",config);
                 //To Start DarknetAppServer
                 darknetAppServer = new DarknetAppServer(darknetAppConfig, this, executor);
                 darknetAppConfig.finishedInitialization();

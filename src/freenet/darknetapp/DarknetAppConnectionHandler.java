@@ -5,19 +5,13 @@
  */
 package freenet.darknetapp;
 
-import freenet.config.SubConfig;
-import freenet.support.SimpleFieldSet;
 import freenet.support.io.LineReadingInputStream;
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Properties;

@@ -131,8 +131,6 @@ public class ECDSA {
         BASE64Decoder decoder = new BASE64Decoder();
         byte[] pri= decoder.decodeBuffer(priv);
         byte[] pub = decoder.decodeBuffer(publ);
-        System.out.println(priv);
-        System.out.println(publ);
         PKCS8EncodedKeySpec priKeySpec = new PKCS8EncodedKeySpec(pri);
         X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(pub);
         KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");

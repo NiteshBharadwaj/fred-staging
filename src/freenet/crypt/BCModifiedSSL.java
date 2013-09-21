@@ -12,6 +12,8 @@ import freenet.config.SubConfig;
 import freenet.support.Logger;
 import freenet.support.api.StringCallback;
 import freenet.support.io.Closer;
+
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -45,7 +47,6 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.security.auth.x500.X500Principal;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.x509.X509V1CertificateGenerator;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
 
 /**
@@ -76,7 +77,7 @@ public class BCModifiedSSL {
     */    
     public static void init(SubConfig sslConfig) {
         int configItemOrder = 0;
-        sslConfig.register("sslKeyStore", "datastore/certs", configItemOrder++, true, true, "SSL.keyStore", "SSL.keyStoreLong",
+        sslConfig.register("sslKeyStore", "datastore/BCcerts", configItemOrder++, true, true, "SSL.keyStore", "SSL.keyStoreLong",
 			new StringCallback() {
 
 				@Override
@@ -197,7 +198,7 @@ public class BCModifiedSSL {
                 certGen.setNotAfter(end);
                 certGen.setPublicKey(keyPair.getPublic());
                 certGen.setSignatureAlgorithm("SHA256WithRSAEncryption");
-                PrivateKey privKey = keyPair.getPrivate();             
+                PrivateKey privKey = keyPair.getPrivate();    
                 X509Certificate cert = certGen.generate(privKey, "BC");
                 Certificate[] chain = new Certificate[1];
                 chain[0] = cert;
@@ -212,13 +213,24 @@ public class BCModifiedSSL {
         }
     }
     private static void storeKeyStore() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
-        FileOutputStream fos = null;
+    	FileOutputStream fos = null;
         try {
-            fos = new FileOutputStream(keyStore);
+
+        	File file = new File(keyStore);
+        	File directory = file.getParentFile();
+        	if(!directory.exists() && !directory.mkdirs()){
+        	    throw new IllegalStateException("Couldn't create directory " + directory);
+        	}
+        	if (!file.exists()) file.createNewFile();
+        	fos = new FileOutputStream(file);
             keystore.store(fos, keyStorePass.toCharArray());
-        } finally {
+        }
+        catch (Exception e) {
+        	e.printStackTrace();
+        }
+        finally {
             Closer.close(fos);
-        }		
+        }
     }
     private static void createSSLContext() throws NoSuchAlgorithmException, UnrecoverableKeyException, KeyStoreException, KeyManagementException {
         // A KeyManagerFactory is used to create key managers
@@ -241,7 +253,7 @@ public class BCModifiedSSL {
             Certificate certificate = keystore.getCertificateChain(CERTIFICATE_CHAIN_ALIAS)[0];
             MessageDigest digest= null;
                 try {    
-                    digest = MessageDigest.getInstance("SHA1");
+                    digest = MessageDigest.getInstance("SHA256");
                 }
                 catch(NoSuchAlgorithmException e) {
                     e.printStackTrace();
